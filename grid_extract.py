@@ -53,32 +53,73 @@ def find_crossword_contour(img):
     return contours[cw_bbox_idx]
 
 
-def main():
+def crop_to_crossword(img, contour):
     '''
-    demo of the grid extraction
+    Prototype crossword cropping and perspective fix. There are some obvious
+    improvements to make to this such as removing all the hardcoded hyperparams
+
+    Parameters
+    ----------
+    img : np.array
+        image of a crossword.
+    contour : np.array
+        a contour which encloses the crossword.
 
     Returns
     -------
-    None.
+    warped_img : np.array
+        a 510*510 version of the crossword i.e. cropped and perspective fixed.
 
+    '''
+    # if the points in the contour are very close, the calcultion of angle is
+    # not very good
+    contour = contour[::2]
+    angles = np.zeros(contour.shape[0])
+
+    # determine the angle between the vectors connecting adjacent points.
+    for idx in range(contour.shape[0]):
+
+        point_0 = contour[idx-1]
+        point_1 = contour[idx]
+        point_2 = contour[idx-2]
+
+        vector_0 = point_0 - point_1
+        vector_1 = point_0 - point_2
+
+        norm_0 = np.linalg.norm(vector_0)
+        norm_1 = np.linalg.norm(vector_1)
+
+        inner_prod = np.squeeze(np.dot(vector_0/norm_0, vector_1.T/norm_1))
+
+        angles[idx] = np.arccos(inner_prod)*180/np.pi
+
+    # veto any angles which are greater than 130 degrees
+    corner_idx = np.argwhere(angles < 130)-1
+
+    # keep only 4 of them.
+    corner_coords = np.squeeze(contour[corner_idx])[0:4].astype(np.float32)
+
+    warping_coords = np.float32([[500, 10], [10, 10], [10, 500], [500, 500]])
+
+    perspective_matrix = cv2.getPerspectiveTransform(
+        corner_coords, warping_coords)
+
+    warped_img = cv2.warpPerspective(img, perspective_matrix, (510, 510))
+
+    return warped_img
+
+
+def main():
+    '''
+    demo of the grid extraction
     '''
 
     img = cv2.imread('crossword1.jpeg')
-    cword_contour = find_crossword_contour(img)
 
-    x, y, width, height = cv2.boundingRect(cword_contour)
-    rect = cv2.minAreaRect(cword_contour)
+    cw_contour = find_crossword_contour(img)
+    cw_cropped = crop_to_crossword(img, cw_contour)
 
-    cv2.drawContours(img, cword_contour, -1, (255, 255, 0), 4)
-    cv2.rectangle(img, (x, y), (x+width, y+height), (255, 0, 0), 3)
-
-    box = cv2.boxPoints(rect)
-    box = np.int0(box)
-    cv2.drawContours(img, [box], 0, (0, 0, 255), 2)
-
-    crossword = img[y:y+height, x:x+width]
-
-    cv2.imshow('Contours', crossword)
+    cv2.imshow('Crossword', cw_cropped)
     cv2.waitKey(0)
 
 
