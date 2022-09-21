@@ -6,10 +6,10 @@ Created on Tue Aug  2 20:03:24 2022
 @author: josephbriggs
 """
 
+import random as rng
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import random as rng
 
 def find_crossword_contour(img):
     '''
@@ -29,8 +29,8 @@ def find_crossword_contour(img):
 
     # pre-process image
     gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    
-    
+
+
     gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     blur = cv2.GaussianBlur(gs_img, (7,7), 1)
@@ -39,14 +39,14 @@ def find_crossword_contour(img):
 
     # cv2.imshow("edges",edges)
     # cv2.waitKey()
-    
+
     # find the area of each contour
     contours, _ = cv2.findContours(
         dilate, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     areas = np.zeros(len(contours))
-    
-    
-    
+
+
+
     for i, contour in enumerate(contours):
         areas[i] = cv2.contourArea(contour)
 
@@ -72,7 +72,7 @@ def show_contours(img,contours,idxs):
         cv2.drawContours(img,contours,i,colour,2)
     cv2.imshow("cshow ontours",img)
     cv2.waitKey()
-    
+
 
 def show_all_contours(img,contours):
     for i in range(len(contours)):
@@ -80,8 +80,8 @@ def show_all_contours(img,contours):
         cv2.drawContours(img,contours,i,colour,2)
     cv2.imshow("show all contours",img)
     cv2.waitKey()
-    
-    
+
+
 def crop_to_crossword(img, contour):
     '''
     Prototype crossword cropping and perspective fix. There are some obvious
@@ -100,10 +100,10 @@ def crop_to_crossword(img, contour):
         a 510*510 version of the crossword i.e. cropped and perspective fixed.
 
     '''
-    
-    
 
-    
+
+
+
     hull = cv2.convexHull(contour)
     epsilon = 0.05*cv2.arcLength(hull, True)
 
@@ -116,21 +116,21 @@ def crop_to_crossword(img, contour):
     approx_info = np.squeeze(approx)
 
     corner_coords = approx_info.astype(np.float32)
-    warping_coords = np.float32([[500, 10], 
-                                 [500, 500], 
-                                 [10, 500], 
+    warping_coords = np.float32([[500, 10],
+                                 [500, 500],
+                                 [10, 500],
                                  [10, 10]])
-    
-    
+
+
     perspective_matrix = cv2.getPerspectiveTransform(
         corner_coords, warping_coords)
 
     warped_img = cv2.warpPerspective(img, perspective_matrix, (510, 510))
 
-    
+
     # cv2.imshow("cropped", warped_img)
     # cv2.waitKey()
-    
+
     return warped_img
 
 
@@ -196,18 +196,18 @@ def get_box_size(img):
         opening, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
     # show_all_contours(img,contours)
-    
+
     side_length = []
 
     for contour in contours:
 
         if ~cv2.isContourConvex(contour):
             rect = cv2.minAreaRect(contour)
-            w, h = rect[1]
-            if not h == 0:
-                aspect = w/h
+            width, height = rect[1]
+            if not height== 0:
+                aspect = width/height
                 if np.abs(1-aspect) < 0.2:
-                    side_length.append(w)
+                    side_length.append(width)
 
     # assume that the most common square is a box for writing an answer in
     return np.median(side_length)
@@ -238,10 +238,10 @@ def digitse_crossword(img):
     box_size = get_box_size(cw_cropped)
 
     clue_boxes = get_clue_box_mask(cw_cropped)
-    
+
     # cv2.imshow("clue boxes",clue_boxes)
     # cv2.waitKey()
-    
+
     rows, cols = clue_boxes.shape
 
     rows_d = int((rows/box_size))
