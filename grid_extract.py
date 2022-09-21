@@ -8,6 +8,7 @@ Created on Tue Aug  2 20:03:24 2022
 
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def find_crossword_contour(img):
@@ -141,20 +142,100 @@ def get_clue_box_mask(img):
     return cv2.bitwise_not(opening)
 
 
-def main():
+def get_box_size(img):
     '''
-    demo of the grid extraction
-    '''
+    Determine the size of the squares in the crossword
 
-    img = cv2.imread('crossword1.jpeg')
+    Parameters
+    ----------
+    img : np.array
+        an image of a crossword.
+
+    Returns
+    -------
+    float
+        The median squaresize found in the crossword grid.
+
+    '''
+    # pre-process image
+    gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gs_img, (3, 3), 0)
+
+    # use 2nd derivative to find centre of lines
+    grad_x = cv2.Sobel(blur, -1, 2, 0, ksize=3)
+    grad_y = cv2.Sobel(blur, -1, 0, 2, ksize=3)
+
+    edges = grad_x+grad_y
+
+    # thresholding improves the performance
+    _, thresh = cv2.threshold(edges, 50, 255, cv2.THRESH_BINARY)
+
+    # use this to remove small bits of noise.
+    kernel = np.ones((3, 3))
+    opening = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+
+    # locate the squares
+    contours, _ = cv2.findContours(
+        opening, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+    side_length = []
+
+    for contour in contours:
+
+        if ~cv2.isContourConvex(contour):
+            rect = cv2.minAreaRect(contour)
+            w, h = rect[1]
+            if not h == 0:
+                aspect = w/h
+                if np.abs(1-aspect) < 0.2:
+                    side_length.append(w)
+
+    # assume that the most common square is a box for writing an answer in
+    return np.median(side_length)
+
+
+def digitse_crossword(img):
+    '''
+    convert an image of a crossword into a numpy array.
+
+    Parameters
+    ----------
+    img : np.array
+        image of a crossword.
+
+    Returns
+    -------
+    np.array
+
+    Each cell in the returned numpy array corresponds to a square in the
+    crossword. If the cell == 1 then that is a space for a letter. If the
+    cell == 0 then that is a flled in space.
+    '''
 
     cw_contour = find_crossword_contour(img)
+    # could replace with match shapes approach?
     cw_cropped = crop_to_crossword(img, cw_contour)
+
+    box_size = get_box_size(cw_cropped)
+
     clue_boxes = get_clue_box_mask(cw_cropped)
 
-    cv2.imshow('Crossword', clue_boxes)
-    cv2.waitKey(0)
+    rows, cols = clue_boxes.shape
+
+    rows_d = int(np.floor(rows/box_size))
+    cols_d = int(np.floor(cols/box_size))
+
+    resized_down = cv2.resize(
+        clue_boxes, (rows_d, cols_d), interpolation=cv2.INTER_LINEAR)
+
+    resized_down[resized_down == 255] = 1
+
+    return resized_down
 
 
 if __name__ == "__main__":
-    main()
+
+    input_image = cv2.imread('crossword1.jpeg')
+    grid = digitse_crossword(input_image)
+    fig, ax = plt.subplots()
+    ax.imshow(grid)
