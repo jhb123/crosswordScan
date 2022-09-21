@@ -89,9 +89,16 @@ def crop_to_crossword(img, contour):
         norm_0 = np.linalg.norm(vector_0)
         norm_1 = np.linalg.norm(vector_1)
 
-        inner_prod = np.squeeze(np.dot(vector_0/norm_0, vector_1.T/norm_1))
+        inner_prod = np.squeeze(np.dot(vector_0, vector_1.T))
 
-        angles[idx] = np.arccos(inner_prod)*180/np.pi
+        # numerical errors in the inner product can occur if the angle is near
+        # 180deg. n.b. due to contour  ordering, angle can't be near zero so
+        # cos_angle will never be near 1.
+        cos_angle = inner_prod/(norm_0*norm_1)
+        if cos_angle < -1:
+            cos_angle = -1
+
+        angles[idx] = np.arccos(cos_angle)*180/np.pi
 
     # veto any angles which are greater than 130 degrees
     corner_idx = np.argwhere(angles < 130)-1
