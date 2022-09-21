@@ -116,6 +116,31 @@ def crop_to_crossword(img, contour):
     return warped_img
 
 
+def get_clue_box_mask(img):
+    '''
+    Creates a binary image where white is a space for a letter and
+    black is a blocked space.
+
+    Parameters
+    ----------
+    img : np.array
+        cropped crossword.
+
+    Returns
+    -------
+    clue_boxes : np.array
+
+    '''
+    gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    thresh = cv2.adaptiveThreshold(gs_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                                   cv2.THRESH_BINARY_INV, 101, 0)
+
+    kernel = np.ones((9, 9))
+    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+    return cv2.bitwise_not(opening)
+
+
 def main():
     '''
     demo of the grid extraction
@@ -125,8 +150,9 @@ def main():
 
     cw_contour = find_crossword_contour(img)
     cw_cropped = crop_to_crossword(img, cw_contour)
+    clue_boxes = get_clue_box_mask(cw_cropped)
 
-    cv2.imshow('Crossword', cw_cropped)
+    cv2.imshow('Crossword', clue_boxes)
     cv2.waitKey(0)
 
 
