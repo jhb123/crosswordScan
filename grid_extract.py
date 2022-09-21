@@ -109,15 +109,12 @@ def crop_to_crossword(img, contour):
 
     approx = cv2.approxPolyDP(hull, epsilon, True)
 
-    cv2.drawContours(img, [contour], -1, (0, 0, 255),  2)
-    cv2.drawContours(img, [hull], -1, (0, 255, 0),  2)
-    cv2.drawContours(img, approx, -1, (255, 0, 0),  10)
+    # cv2.drawContours(img, [contour], -1, (0, 0, 255),  2)
+    # cv2.drawContours(img, [hull], -1, (0, 255, 0),  2)
+    # cv2.drawContours(img, approx, -1, (255, 0, 0),  10)
 
     approx_info = np.squeeze(approx)
-    x = approx_info[:,0]
-    y = approx_info[:,1]
-    print(approx)
-    
+
     corner_coords = approx_info.astype(np.float32)
     warping_coords = np.float32([[500, 10], 
                                  [500, 500], 
@@ -131,8 +128,8 @@ def crop_to_crossword(img, contour):
     warped_img = cv2.warpPerspective(img, perspective_matrix, (510, 510))
 
     
-    cv2.imshow("cropped", warped_img)
-    cv2.waitKey()
+    # cv2.imshow("cropped", warped_img)
+    # cv2.waitKey()
     
     return warped_img
 
@@ -198,6 +195,8 @@ def get_box_size(img):
     contours, _ = cv2.findContours(
         opening, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
+    # show_all_contours(img,contours)
+    
     side_length = []
 
     for contour in contours:
@@ -234,16 +233,19 @@ def digitse_crossword(img):
 
     cw_contour = find_crossword_contour(img)
     # could replace with match shapes approach?
-    cw_cropped = crop_to_crossword(img, cw_contour)
+    cw_cropped = crop_to_crossword(img, cw_contour)[10:500,10:500]
 
     box_size = get_box_size(cw_cropped)
 
     clue_boxes = get_clue_box_mask(cw_cropped)
-
+    
+    # cv2.imshow("clue boxes",clue_boxes)
+    # cv2.waitKey()
+    
     rows, cols = clue_boxes.shape
 
-    rows_d = int(np.floor(rows/box_size))
-    cols_d = int(np.floor(cols/box_size))
+    rows_d = int((rows/box_size))
+    cols_d = int((cols/box_size))
 
     resized_down = cv2.resize(
         clue_boxes, (rows_d, cols_d), interpolation=cv2.INTER_LINEAR)
