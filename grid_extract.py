@@ -9,7 +9,7 @@ Created on Tue Aug  2 20:03:24 2022
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-
+import random as rng
 
 def find_crossword_contour(img):
     '''
@@ -29,18 +29,31 @@ def find_crossword_contour(img):
 
     # pre-process image
     gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.adaptiveThreshold(gs_img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                   cv2.THRESH_BINARY_INV, 101, 2)
+    
+    
+    gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
+    blur = cv2.GaussianBlur(gs_img, (7,7), 1)
+    edges = cv2.Canny(blur,50,200,False)
+    dilate = cv2.dilate(edges,np.ones((5,5)),1)
+
+    # cv2.imshow("edges",edges)
+    # cv2.waitKey()
+    
     # find the area of each contour
     contours, _ = cv2.findContours(
-        thresh, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        dilate, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     areas = np.zeros(len(contours))
+    
+    
+    
     for i, contour in enumerate(contours):
         areas[i] = cv2.contourArea(contour)
 
     # assume image takes up 1/4 of screen
-    idxs = np.where(areas > thresh.size/16)[0]
+    idxs = np.where(areas > gs_img.size/16)[0]
+
+    # show_contours(img,contours,idxs)
 
     # find the squarest contour.
     score = 1e6
@@ -53,7 +66,22 @@ def find_crossword_contour(img):
 
     return contours[cw_bbox_idx]
 
+def show_contours(img,contours,idxs):
+    for i in idxs:
+        colour = (rng.randint(0,256),rng.randint(0,256),rng.randint(0,256))
+        cv2.drawContours(img,contours,i,colour,2)
+    cv2.imshow("cshow ontours",img)
+    cv2.waitKey()
+    
 
+def show_all_contours(img,contours):
+    for i in range(len(contours)):
+        colour = (rng.randint(0,256),rng.randint(0,256),rng.randint(0,256))
+        cv2.drawContours(img,contours,i,colour,2)
+    cv2.imshow("show all contours",img)
+    cv2.waitKey()
+    
+    
 def crop_to_crossword(img, contour):
     '''
     Prototype crossword cropping and perspective fix. There are some obvious
@@ -72,48 +100,40 @@ def crop_to_crossword(img, contour):
         a 510*510 version of the crossword i.e. cropped and perspective fixed.
 
     '''
-    # if the points in the contour are very close, the calcultion of angle is
-    # not very good
-    contour = contour[::2]
-    angles = np.zeros(contour.shape[0])
+    
+    
 
-    # determine the angle between the vectors connecting adjacent points.
-    for idx in range(contour.shape[0]):
+    
+    hull = cv2.convexHull(contour)
+    epsilon = 0.05*cv2.arcLength(hull, True)
 
-        point_0 = contour[idx-1]
-        point_1 = contour[idx]
-        point_2 = contour[idx-2]
+    approx = cv2.approxPolyDP(hull, epsilon, True)
 
-        vector_0 = point_0 - point_1
-        vector_1 = point_0 - point_2
+    cv2.drawContours(img, [contour], -1, (0, 0, 255),  2)
+    cv2.drawContours(img, [hull], -1, (0, 255, 0),  2)
+    cv2.drawContours(img, approx, -1, (255, 0, 0),  10)
 
-        norm_0 = np.linalg.norm(vector_0)
-        norm_1 = np.linalg.norm(vector_1)
-
-        inner_prod = np.squeeze(np.dot(vector_0, vector_1.T))
-
-        # numerical errors in the inner product can occur if the angle is near
-        # 180deg. n.b. due to contour  ordering, angle can't be near zero so
-        # cos_angle will never be near 1.
-        cos_angle = inner_prod/(norm_0*norm_1)
-        if cos_angle < -1:
-            cos_angle = -1
-
-        angles[idx] = np.arccos(cos_angle)*180/np.pi
-
-    # veto any angles which are greater than 130 degrees
-    corner_idx = np.argwhere(angles < 130)-1
-
-    # keep only 4 of them.
-    corner_coords = np.squeeze(contour[corner_idx])[0:4].astype(np.float32)
-
-    warping_coords = np.float32([[500, 10], [10, 10], [10, 500], [500, 500]])
-
+    approx_info = np.squeeze(approx)
+    x = approx_info[:,0]
+    y = approx_info[:,1]
+    print(approx)
+    
+    corner_coords = approx_info.astype(np.float32)
+    warping_coords = np.float32([[500, 10], 
+                                 [500, 500], 
+                                 [10, 500], 
+                                 [10, 10]])
+    
+    
     perspective_matrix = cv2.getPerspectiveTransform(
         corner_coords, warping_coords)
 
     warped_img = cv2.warpPerspective(img, perspective_matrix, (510, 510))
 
+    
+    cv2.imshow("cropped", warped_img)
+    cv2.waitKey()
+    
     return warped_img
 
 
