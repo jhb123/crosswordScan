@@ -4,10 +4,10 @@ crosswordScan is a python tool for extracting a crossword from an image. This is
 
 ## Core Functionality
 
-- [ ] https://github.com/jhb123/crosswordScan/issues/1
-- [ ] https://github.com/jhb123/crosswordScan/issues/2
-- [ ] https://github.com/jhb123/crosswordScan/issues/3
-- [ ] https://github.com/jhb123/crosswordScan/issues/4
+- [ ] https://github.com/jhb123/crosswordScan/issues/1 extraction of the crossword grid.
+- [ ] https://github.com/jhb123/crosswordScan/issues/2 extraction of the clues.
+- [ ] https://github.com/jhb123/crosswordScan/issues/3 interface for completeing the grid.
+- [ ] https://github.com/jhb123/crosswordScan/issues/4 connectivity to online database of solutions.
 
 ## Other Tasks
 
