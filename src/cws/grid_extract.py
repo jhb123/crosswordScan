@@ -5,12 +5,11 @@ Created on Tue Aug  2 20:03:24 2022
 
 @author: josephbriggs
 """
-
-import random as rng
 import importlib.resources
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 def find_crossword_contour(img):
     '''
@@ -31,12 +30,11 @@ def find_crossword_contour(img):
     # pre-process image
     gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-
     gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    blur = cv2.GaussianBlur(gs_img, (7,7), 1)
-    edges = cv2.Canny(blur,50,200,False)
-    dilate = cv2.dilate(edges,np.ones((5,5)),1)
+    blur = cv2.GaussianBlur(gs_img, (7, 7), 1)
+    edges = cv2.Canny(blur, 50, 200, False)
+    dilate = cv2.dilate(edges, np.ones((5, 5)), 1)
 
     # cv2.imshow("edges",edges)
     # cv2.waitKey()
@@ -45,8 +43,6 @@ def find_crossword_contour(img):
     contours, _ = cv2.findContours(
         dilate, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     areas = np.zeros(len(contours))
-
-
 
     for i, contour in enumerate(contours):
         areas[i] = cv2.contourArea(contour)
@@ -66,21 +62,6 @@ def find_crossword_contour(img):
             cw_bbox_idx = i
 
     return contours[cw_bbox_idx]
-
-def show_contours(img,contours,idxs):
-    for i in idxs:
-        colour = (rng.randint(0,256),rng.randint(0,256),rng.randint(0,256))
-        cv2.drawContours(img,contours,i,colour,2)
-    cv2.imshow("cshow ontours",img)
-    cv2.waitKey()
-
-
-def show_all_contours(img,contours):
-    for i in range(len(contours)):
-        colour = (rng.randint(0,256),rng.randint(0,256),rng.randint(0,256))
-        cv2.drawContours(img,contours,i,colour,2)
-    cv2.imshow("show all contours",img)
-    cv2.waitKey()
 
 
 def crop_to_crossword(img, contour):
@@ -102,9 +83,6 @@ def crop_to_crossword(img, contour):
 
     '''
 
-
-
-
     hull = cv2.convexHull(contour)
     epsilon = 0.05*cv2.arcLength(hull, True)
 
@@ -122,12 +100,10 @@ def crop_to_crossword(img, contour):
                                  [10, 500],
                                  [10, 10]])
 
-
     perspective_matrix = cv2.getPerspectiveTransform(
         corner_coords, warping_coords)
 
     warped_img = cv2.warpPerspective(img, perspective_matrix, (510, 510))
-
 
     # cv2.imshow("cropped", warped_img)
     # cv2.waitKey()
@@ -205,7 +181,7 @@ def get_box_size(img):
         if ~cv2.isContourConvex(contour):
             rect = cv2.minAreaRect(contour)
             width, height = rect[1]
-            if not height== 0:
+            if not height == 0:
                 aspect = width/height
                 if np.abs(1-aspect) < 0.2:
                     side_length.append(width)
@@ -234,7 +210,7 @@ def digitse_crossword(img):
 
     cw_contour = find_crossword_contour(img)
     # could replace with match shapes approach?
-    cw_cropped = crop_to_crossword(img, cw_contour)[10:500,10:500]
+    cw_cropped = crop_to_crossword(img, cw_contour)[10:500, 10:500]
 
     box_size = get_box_size(cw_cropped)
 
@@ -256,14 +232,21 @@ def digitse_crossword(img):
     return resized_down
 
 
-if __name__ == "__main__":
-    
+def main():
+    '''
+    example of functions in grid extract
+    '''
+
     test_image = "crossword1.jpeg"
     crossword_location = "cws.resources.crosswords"
-    
-    with importlib.resources.path(crossword_location,test_image) as path:
+
+    with importlib.resources.path(crossword_location, test_image) as path:
         input_image = cv2.imread(str(path))
-     
+
     grid = digitse_crossword(input_image)
     fig, ax = plt.subplots()
     ax.imshow(grid)
+
+
+if __name__ == "__main__":
+    main()
