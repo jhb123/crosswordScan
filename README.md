@@ -19,7 +19,7 @@ crosswordScan is a python tool for extracting a crossword from an image. This is
 
 Pull this repo, cd into the directory containing the scr directory and run:
 ```pip install .```
-Try this out in a virtual python environment!
+Try this out in a virtual python environment! import it with `import cws`
 
 Once the project is slightly more mature, this will be put on the python package index.
 
