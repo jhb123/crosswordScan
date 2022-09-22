@@ -6,6 +6,9 @@ Created on Thu Sep 22 17:00:17 2022
 @author: josephbriggs
 """
 
+import random as rng
+import cv2
+
 def show_contours(img,contours,idxs):
     for i in idxs:
         colour = (rng.randint(0,256),rng.randint(0,256),rng.randint(0,256))
