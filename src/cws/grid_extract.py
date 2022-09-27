@@ -232,46 +232,220 @@ def digitse_crossword(img):
     return resized_down
 
 
-def find_clue_positions(grid,kernel):
-    grid_pad = np.zeros((grid.shape[0]+2,grid.shape[1]+2))
-    grid_pad[1:-1,1:-1] = grid
+def convolve_grid(grid, kernel):
+    '''
+    wrapper function for filter2d convolve which pads the input
+    before performing the convolution and crops the result back
+    to the original size.
+
+    Parameters
+    ----------
+    grid : np.array
+        a digitised version of a crossword grid.
+    kernel : np,array
+        a kernel which is convolved with the grid.
+
+    Returns
+    -------
+    TYPE
+        np.array.
+
+    '''
+    grid_pad = np.zeros((grid.shape[0]+2, grid.shape[1]+2))
+    grid_pad[1:-1, 1:-1] = grid
     tentative = cv2.filter2D(grid_pad, -1, kernel) == 1
-    starts = np.logical_and(tentative,grid_pad)
-    return starts[1:-1,1:-1]
+    starts = np.logical_and(tentative, grid_pad)
+    return starts[1:-1, 1:-1]
+
 
 def get_grid_with_clue_marks(grid):
-    acc_kernel = np.array([[0,0,0],
-                          [-1,0,1],
-                          [0,0,0]])
-    
-    down_kernel = np.array([[0,-1,0],
-                           [0,0,0],
-                           [0,1,0]])
+    '''
+    returns a 2d array with points of interest marked.
 
-    acc_starts = find_clue_positions(grid,acc_kernel)
-    down_starts = find_clue_positions(grid,down_kernel)
+    Parameters
+    ----------
+    grid : np.array
+        a digitised version of a crossword grid.
+
+    Returns
+    -------
+    all_info : np.array
+        np.array of the same shape as the input grid. if grid[i,j] is:
+            0 -> a black square
+            1 -> a white square that is not the start of a word
+            2 -> the beginning of just an across clue
+            3 -> the beginning of just a down clue
+            4 -> the beginning of both a down and across clue
+    '''
+    acc_kernel = np.array([[0, 0, 0],
+                          [-1, 0, 1],
+                          [0, 0, 0]])
+
+    down_kernel = np.array([[0, -1, 0],
+                           [0, 0, 0],
+                           [0, 1, 0]])
+
+    acc_starts = convolve_grid(grid, acc_kernel)
+    down_starts = convolve_grid(grid, down_kernel)
     all_info = grid + acc_starts+2*down_starts
     return all_info
 
+
 def get_clue_numbers(grid):
-    
+    '''
+    Returns the numbers and locations of the across and down clues.
+
+    Parameters
+    ----------
+    grid : np.array
+        a digitised version of a crossword grid.
+
+    Returns
+    -------
+        list of the numbers for the across clues
+        list of the numbers for the down clues
+        list of the start coordinates for the across clues
+        list of the start coordinates for the down clues
+
+    '''
     clue_grid = get_grid_with_clue_marks(grid)
+    row, col = clue_grid.shape
     acrosses = []
     downs = []
+    a_coords = []
+    d_coords = []
+
     idx = 1
     clue_grid = clue_grid.flatten()
-    for val in clue_grid:
+    for i, val in enumerate(clue_grid):
         if val == 2:
             acrosses.append(idx)
-            idx = idx+ 1
+            a_coords.append([int(i/row), i % col])
+            idx = idx + 1
         elif val == 3:
             downs.append(idx)
+            d_coords.append([int(i/row), i % col])
             idx = idx+1
         elif val == 4:
             acrosses.append(idx)
             downs.append(idx)
+            a_coords.append([int(i/row), i % col])
+            d_coords.append([int(i/row), i % col])
             idx = idx + 1
-    return acrosses,downs
+    return acrosses, downs, a_coords, d_coords
+
+
+def get_across_clue_length(grid, coords):
+    '''
+
+    Parameters
+    ----------
+    grid : np.array
+        a digitised version of a crossword grid.
+    coords : list of np.arrays
+        the coordinates of the [row,col] of the start of each word.
+
+    Returns
+    -------
+        list of lengths ordered in the same way as the coordinates
+
+    '''
+    kernel = np.array([[0, 0, 0],
+                       [1, 0, 1],
+                       [0, 0, 0]])
+    bounds = np.logical_and(grid, convolve_grid(grid, kernel))
+    bounds_flat = bounds.flatten()
+
+    fill_val = False
+    for i, val in enumerate(bounds_flat):
+        if val:
+            fill_val = ~fill_val
+        bounds_flat[i] = fill_val
+
+    across_only = np.reshape(bounds_flat, bounds.shape)
+    across_only = np.logical_or(across_only, bounds)
+
+    _, labels = cv2.connectedComponents(
+        across_only.astype(np.uint8), 4)
+
+    # fig,ax = plt.subplots()
+    # ax.imshow(labels)
+    lengths = []
+    for i in coords:
+        label_num = labels[i[0], i[1]]
+        lengths.append(np.count_nonzero(labels == label_num))
+    return lengths
+
+
+def get_down_clue_lengths(grid, coords):
+    '''
+
+    Parameters
+    ----------
+    grid : np.array
+        a digitised version of a crossword grid.
+    coords : list of np.arrays
+        the coordinates of the [row,col] of the start of each word.
+
+    Returns
+    -------
+        list of lengths ordered in the same way as the coordinates
+
+    '''
+    kernel = np.array([[0, 1, 0],
+                       [0, 0, 0],
+                       [0, 1, 0]])
+    bounds = np.logical_and(grid, convolve_grid(grid, kernel))
+    bounds = np.rot90(bounds, 1)
+
+    bounds_flat = bounds.flatten()
+
+    fill_val = False
+    for i, val in enumerate(bounds_flat):
+        if val:
+            fill_val = ~fill_val
+        bounds_flat[i] = fill_val
+
+    down_only = np.reshape(bounds_flat, bounds.shape)
+    down_only = np.logical_or(down_only, bounds)
+    down_only = np.swapaxes(down_only, 0, 1)
+    down_only = down_only[:, ::-1]
+
+    _, labels = cv2.connectedComponents(down_only.astype(np.uint8), 4)
+
+    # fig,ax = plt.subplots()
+    # ax.imshow(labels)
+    lengths = []
+    for i in coords:
+        label_num = labels[i[0], i[1]]
+        lengths.append(np.count_nonzero(labels == label_num))
+    return lengths
+
+
+def get_clue_info(grid):
+    '''
+    Wrapper for getting clue labels and lengths.
+
+    Parameters
+    ----------
+    grid : np.array
+        a digitised version of a crossword grid.
+
+    Returns
+    -------
+        tuple of across clue: number, length, start letter location
+        tuple of down clue: number, length, start letter location
+
+    '''
+    acrosses, downs, a_coords, d_coords = get_clue_numbers(grid)
+
+    across_lengths = get_across_clue_length(grid, a_coords)
+    down_lengths = get_down_clue_lengths(grid, d_coords)
+
+    across_info = (acrosses, across_lengths, a_coords)
+    down_info = (downs, down_lengths, d_coords)
+    return across_info, down_info
+
 
 def main():
     '''
@@ -285,8 +459,20 @@ def main():
         input_image = cv2.imread(str(path))
 
     grid = digitse_crossword(input_image)
-    fig, ax = plt.subplots()
-    ax.imshow(grid)
+    clue_marks = get_grid_with_clue_marks(grid)
+    across_info, down_info = get_clue_info(grid)
+
+    a_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
+                     for c in zip(across_info[0], across_info[1], across_info[2])]
+    d_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
+                     for c in zip(down_info[0], down_info[1], down_info[2])]
+
+    print(*a_string_info, sep='\n')
+    print('\n')
+    print(*d_string_info, sep='\n')
+
+    _, ax = plt.subplots()
+    ax.imshow(clue_marks)
 
 
 if __name__ == "__main__":
