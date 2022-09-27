@@ -9,14 +9,15 @@ Created on Wed Sep 21 18:05:52 2022
 import importlib.resources
 import cv2
 import numpy as np
-# import cws.utils as utils
+import cws.utils as utils
 import cws.grid_extract 
 # from sklearn.cluster import KMeans
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import pytesseract
 # from pytesseract import Output
 import string
 # from cv2 import dnn_superres
+import re
 
 def flatten_text_box(img,contour):
     
@@ -40,7 +41,7 @@ def locate_text_boxes(input_image,show = False):
     
     img_for_reading = cv2.adaptiveThreshold(gs_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,
                 cv2.THRESH_BINARY,51,20)
-    
+
     # img_for_reading = cv2.erode(img_for_reading,np.ones((3,3)),1)
     
     # run tesseract, returning the bounding boxes
@@ -62,13 +63,13 @@ def locate_text_boxes(input_image,show = False):
         y2 = h  - int(b[4])
         
         area = (x2-x1)*(y1-y2)
-        if area < 1000:
+        if area < 2000:
             cv2.rectangle(blank,
                             (x1, y1), 
                             (x2, y2),
                             255, -1)
             
-    dilate = cv2.dilate(blank,np.ones((21,21)),3)
+    dilate = cv2.dilate(blank,np.ones((51,51)),3)
     
     contours, hierarchy = cv2.findContours(dilate, 
                                             cv2.RETR_EXTERNAL,
@@ -117,72 +118,103 @@ def process_text_box(img):
     img_for_reading = cv2.adaptiveThreshold(norm_image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                 cv2.THRESH_BINARY,31,30)
     
-    erode = cv2.erode(img_for_reading,np.ones ((2,2)),1)
-    print(pytesseract.image_to_string(img_for_reading))
+    # erode = cv2.erode(img_for_reading,np.ones ((2,2)),1)
     
-    cv2.imshow("image for reading",img_for_reading )
-    cv2.waitKey()
+    return img_for_reading
+    # print(pytesseract.image_to_string(img_for_reading))
+    
+    # cv2.imshow("image for reading",img_for_reading )
+    # cv2.waitKey()
                
+def match_template(arr,pattern):
+    matched_template = cv2.matchTemplate(arr.astype('uint8'),pattern.astype('uint8'),cv2.TM_SQDIFF)
+    matched_template = matched_template.ravel()
+    return matched_template
 
-    
 def main():
     '''
     clue extraction place holder and experiments
     '''
 
-    test_image = "crossword3.jpeg"
+    test_image = "crossword4.jpeg"
     crossword_location = "cws.resources.crosswords"
     pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/Cellar/tesseract/5.2.0/bin/tesseract'
 
     with importlib.resources.path(crossword_location, test_image) as path:
         input_image = cv2.imread(str(path))
- 
+    
+    grid = cws.grid_extract.digitse_crossword(input_image).astype(np.uint8)
+    across_info, down_info = cws.grid_extract.get_clue_info(grid)
+    
+    cross_word_contour = cws.grid_extract.get_grid_contour_by_blobbing(input_image)
+    
+    gs_img = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
+    
+    cv2.fillPoly(gs_img, [cross_word_contour], [255,255,255])
+    
+    img_for_reading = cv2.adaptiveThreshold(gs_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,
+                cv2.THRESH_BINARY,51,20)
+    
+    all_text = pytesseract.image_to_string(img_for_reading,config='--psm 3')
+
+    left_brackets = "[{\[]"
+    right_brackets = "[}\]]"
+    all_text = re.sub(left_brackets,'(',all_text)
+    all_text = re.sub(right_brackets,')',all_text)
+    
+    all_text_list_split = re.split('\n', all_text)
+    
+    patterns = [r'(\(\d+\))', # number in brackets
+                r'(\([\d+-]+\))', # numbers in brackets with hyphens
+                r'(\([\d+,]+\))', # numbers in brackets with commas
+                r'(\([\d+\s]+\))', # numbers in brackets with spaces
+                r'(\d+\))', # number missing left bracket
+                r'(\(\d+)', # number missing right bracket
+                ]
+    
+    pattern = '|'.join(patterns)
+
+    clues = []
+    word_lengths = []
+    clue_lengths = []
+
+    for s in all_text_list_split:
+        text = re.search(pattern +r'\Z', s)
+        if text != None:
+            clues.append(text.string)
+            nums = re.findall(pattern, text.string)
+            nums = [int(s) for s in re.findall(r'\d+', ' '.join(nums[0]))]
+            
+            word_lengths.append(nums)
+            clue_lengths.append(sum(nums))
+
    
-    contours = locate_text_boxes(input_image,show = False)
-    text_box = flatten_text_box(input_image,contours[4])
-    process_text_box(text_box)
-
-
-#     # data = list(zip(xs, ys,aspects,areas,bb_areas))
+    # for l,c in zip(clue_lengths,clues):
+    #     print(c)
+    #     print(l)
     
-#     # elbow_method(data)
-
-#     # num_clusters = 9
-#     # kmeans = KMeans(n_clusters=num_clusters)
-#     # kmeans.fit(data)
+    # print(len(clues) == len(across_info[1] + down_info[1]))
+    # print(clue_lengths)
+    # print(across_info[1])
+    # print(down_info[1])
     
-#     # max_groups = kmeans.labels_.max()
-#     # for i in range(max_groups):
-#     #     colour = (rng.randint(0,256),rng.randint(0,256),rng.randint(0,256))
+    all_clues = np.array(clue_lengths)
+    across_array = np.array(across_info[1])
+    down_array = np.array(down_info[1])
+
+    across_start = np.argmin(match_template(all_clues,across_array))
+    across_idxs = np.arange(across_start,across_start+across_array.size)
+    down_start = np.argmin(match_template(all_clues,down_array))
+    down_idxs = np.arange(down_start,down_start+down_array.size)
+
+    print('ACROSS')
+    for i,info in zip(across_idxs,across_info[0]):
+        print(f'{info}a. '+ clues[i])    
+    print('\n')
+    print('DOWN')
+    for i,info in zip(down_idxs,down_info[0]):
+        print(f'{info}d. '+ clues[i])
         
-#     #     idxs = np.squeeze(np.argwhere(kmeans.labels_==i))
-
-#     #     for i in idxs:
-#     #         cv2.drawContours(input_image,contours,i,colour,2)
-
-#         # utils.show_all_bounding_boxes(input_image, contours)
-
-#     # print(pytesseract.image_to_string(thresh))
-
-#     # cv2.imshow("thresh",img_for_reading)
-#     # cv2.waitKey()
-    
-
-    
-# def elbow_method(data):
-    
-#     inertias = []
-#     num_test_points = 25
-#     for i in range(1,num_test_points):
-#         kmeans = KMeans(n_clusters=i)
-#         kmeans.fit(data)
-#         inertias.append(kmeans.inertia_)
-#     fig,ax = plt.subplots()
-#     ax.plot(range(1,num_test_points), inertias, marker='o')
-#     ax.set_title('Elbow method')
-#     ax.set_xlabel('Number of clusters')
-#     ax.set_ylabel('Inertia')
-    
 
 if __name__ == "__main__":
     main()
