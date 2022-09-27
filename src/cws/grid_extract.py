@@ -232,6 +232,47 @@ def digitse_crossword(img):
     return resized_down
 
 
+def find_clue_positions(grid,kernel):
+    grid_pad = np.zeros((grid.shape[0]+2,grid.shape[1]+2))
+    grid_pad[1:-1,1:-1] = grid
+    tentative = cv2.filter2D(grid_pad, -1, kernel) == 1
+    starts = np.logical_and(tentative,grid_pad)
+    return starts[1:-1,1:-1]
+
+def get_grid_with_clue_marks(grid):
+    acc_kernel = np.array([[0,0,0],
+                          [-1,0,1],
+                          [0,0,0]])
+    
+    down_kernel = np.array([[0,-1,0],
+                           [0,0,0],
+                           [0,1,0]])
+
+    acc_starts = find_clue_positions(grid,acc_kernel)
+    down_starts = find_clue_positions(grid,down_kernel)
+    all_info = grid + acc_starts+2*down_starts
+    return all_info
+
+def get_clue_numbers(grid):
+    
+    clue_grid = get_grid_with_clue_marks(grid)
+    acrosses = []
+    downs = []
+    idx = 1
+    clue_grid = clue_grid.flatten()
+    for val in clue_grid:
+        if val == 2:
+            acrosses.append(idx)
+            idx = idx+ 1
+        elif val == 3:
+            downs.append(idx)
+            idx = idx+1
+        elif val == 4:
+            acrosses.append(idx)
+            downs.append(idx)
+            idx = idx + 1
+    return acrosses,downs
+
 def main():
     '''
     example of functions in grid extract
