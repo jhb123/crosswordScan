@@ -9,6 +9,8 @@ import importlib.resources
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import stats as st
+import cws.utils as utils
 
 
 def find_crossword_contour(img):
@@ -28,8 +30,6 @@ def find_crossword_contour(img):
     '''
 
     # pre-process image
-    gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
     gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     blur = cv2.GaussianBlur(gs_img, (7, 7), 1)
@@ -208,7 +208,8 @@ def digitse_crossword(img):
     cell == 0 then that is a flled in space.
     '''
 
-    cw_contour = find_crossword_contour(img)
+    # cw_contour = find_crossword_contour(img)
+    cw_contour = get_grid_contour_by_blobbing(img)
     # could replace with match shapes approach?
     cw_cropped = crop_to_crossword(img, cw_contour)[10:500, 10:500]
 
@@ -447,12 +448,54 @@ def get_clue_info(grid):
     return across_info, down_info
 
 
+def get_grid_contour_by_blobbing(img):
+    gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    thresh = cv2.adaptiveThreshold(gs_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,
+                cv2.THRESH_BINARY_INV,51,30)
+    
+    dilate = cv2.dilate(thresh,np.ones((7,7)),1)
+    
+    max_area = gs_img.size/(6**2)
+    
+    totalLabels, label_ids, values, centroid = cv2.connectedComponentsWithStats(dilate, 8)
+    areas = values[:,4]
+    area_thresh = max_area
+    idxs = np.argwhere(areas>area_thresh)
+    
+
+    big_features = values[idxs,:]
+    widths = np.squeeze(big_features)[:,2]
+    heights = np.squeeze(big_features)[:,3]
+    
+    aspects = widths/heights
+    
+    squareness = np.abs(aspects - 1)
+    
+    i = np.argmin(squareness)
+    
+    
+    row_info = np.squeeze(big_features[i,:])
+
+    row = np.argwhere(values[:,:] == row_info)
+    cw_label = row[0][0]
+    
+    cw = label_ids == cw_label
+    cw = 255*cw.astype(np.uint8)
+    
+    contours, hierarchy = cv2.findContours(cw, 
+                                            cv2.RETR_EXTERNAL,
+                                            cv2.CHAIN_APPROX_SIMPLE)
+    
+    return contours[0]
+    
+
 def main():
     '''
     example of functions in grid extract
     '''
 
-    test_image = "crossword1.jpeg"
+    test_image = "crossword4.jpeg"
     crossword_location = "cws.resources.crosswords"
 
     with importlib.resources.path(crossword_location, test_image) as path:
@@ -463,9 +506,9 @@ def main():
     across_info, down_info = get_clue_info(grid)
 
     a_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
-                     for c in zip(across_info[0], across_info[1], across_info[2])]
+                      for c in zip(across_info[0], across_info[1], across_info[2])]
     d_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
-                     for c in zip(down_info[0], down_info[1], down_info[2])]
+                      for c in zip(down_info[0], down_info[1], down_info[2])]
 
     print(*a_string_info, sep='\n')
     print('\n')
