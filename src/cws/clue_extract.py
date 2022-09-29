@@ -38,15 +38,11 @@ def locate_text_boxes(input_image,show = False):
     img_for_reading = cv2.adaptiveThreshold(gs_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,
                 cv2.THRESH_BINARY,51,20)
 
-    # img_for_reading = cv2.erode(img_for_reading,np.ones((3,3)),1)
-    
-    # run tesseract, returning the bounding boxes
     boxes = pytesseract.image_to_boxes(img_for_reading) # also include any config options you use
     boxes_list = boxes.splitlines()
     
     h, w = img_for_reading.shape # assumes color image
     blacklist = string.punctuation
-    # draw the bounding boxes on the image
     blank = np.zeros(img_for_reading.shape,dtype = np.uint8)
     
     boxes_list = [b for b in boxes_list if b[0] not in blacklist]
@@ -113,14 +109,9 @@ def process_text_box(img):
 
     img_for_reading = cv2.adaptiveThreshold(norm_image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                 cv2.THRESH_BINARY,31,30)
-    
-    # erode = cv2.erode(img_for_reading,np.ones ((2,2)),1)
-    
+        
     return img_for_reading
-    # print(pytesseract.image_to_string(img_for_reading))
-    
-    # cv2.imshow("image for reading",img_for_reading )
-    # cv2.waitKey()
+
                
 def match_template(arr,pattern):
     matched_template = cv2.matchTemplate(arr.astype('uint8'),pattern.astype('uint8'),cv2.TM_SQDIFF)
@@ -180,24 +171,6 @@ def segment_page_preprocess(img):
                             (x2, y2),
                             255, -1)
             
-            # cv2.putText(img, 
-            #             text, 
-            #             (x1, y2), 
-            #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, 
-            #             (0, 0, 255), 
-            #             2, 
-            #             cv2.LINE_4)
-            
-            # cv2.putText(img, 
-            #             conf, 
-            #             (x1+5, y2), 
-            #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, 
-            #             (0, 255, 255), 
-            #             2, 
-            #             cv2.LINE_4)
-    
-    
-    
 
     return word_loc,np.median(heights_for_average)
 
@@ -215,17 +188,9 @@ def segment_page_idxs(word_loc,smoothing = 100,thresh_f = 5):
     smoother = np.ones(size + corr)/(size+corr)
     row_scan_s = np.convolve(row_scan,smoother ,mode = 'valid')
 
-    # thresh = row_scan.size/thesh_f #% of pixels
-    # print(thresh)
     thresh = np.percentile(row_scan_s, [thresh_f])
-    # print(thresh)
     
     white_spaces = np.argwhere(row_scan_s <= thresh)
-    
-    # fig,ax = plt.subplots()
-    # ax.plot(row_scan)
-    # ax.plot(row_scan_s)
-    # ax.scatter(white_spaces,row_scan[white_spaces],zorder = 16,color = 'k')
 
     return white_spaces
            
@@ -256,35 +221,15 @@ def get_text_boxes(img):
 def get_text_box_idx(img,labels,idx,pad):
     
     mask = labels == idx
-    
     mask = 255*mask.astype(np.uint8)
-    
     kernel = np.ones((pad,pad))
-
     mask_dilate = cv2.dilate(mask,kernel,1)
-    
-    # args = np.argwhere(mask_dilate>0)
-    
-    # x1 = np.argmin(mask_dilate,axis=1) #np.min(args,axis = 0)
-    # x2 = np.max(args,axis = 0)
-    # y1 = np.min(args,axis = 1)
-    # y2 = np.max(args,axis = 1)
-    # print(f'{x1=}')
-    # print(f'{y1=}')
-    # print(f'{x2=}')
-    # print(f'{y2=}')
-    
-    mask_array = np.ix_(mask_dilate.any(1), mask_dilate.any(0))
-
-    # print(args)
-    # box_blur = cv2.filter2D(mask, -1, kernel) == 1
-    
+    mask_array = np.ix_(mask_dilate.any(1), mask_dilate.any(0))    
     return img[mask_array]
 
     
 def text_box_pre_process(img,word_height):
     
-
     sr = cv2.dnn_superres.DnnSuperResImpl_create()
     path = "ESPCN_x4.pb"
     sr.readModel(path)
@@ -292,10 +237,8 @@ def text_box_pre_process(img,word_height):
     result = sr.upsample(img)
         
     gs_img = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
-    
-    
+       
     size_factor = int(word_height*4) + 1
-    # # if word_height > 40:
     img_for_reading = cv2.medianBlur(gs_img, 5)
 
     img_for_reading = cv2.adaptiveThreshold(img_for_reading,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
@@ -305,8 +248,8 @@ def text_box_pre_process(img,word_height):
     # img_for_reading = cv2.morphologyEx(img_for_reading, cv2.MORPH_CLOSE, kernel)
     # blur = cv2.GaussianBlur(img_for_reading,(9,9),1)
         
-    cv2.imshow("text to analyse",img_for_reading)
-    cv2.waitKey()
+    # cv2.imshow("text to analyse",img_for_reading)
+    # cv2.waitKey()
     
     return img_for_reading
 
@@ -321,8 +264,7 @@ def text_box_clue_extraction(img):
     all_text = re.sub(left_brackets,'(',all_text)
     all_text = re.sub(right_brackets,')',all_text)
     all_text = all_text.replace('\n',' ')
-    print(f"{'':@^30}")
-    print(all_text)    
+ 
     
     pattern = r'(\(?[\d.\-,gsGS\s]*\))|(\([\d.\-,gsGS\s]*\)?)'
     
@@ -331,23 +273,20 @@ def text_box_clue_extraction(img):
     split_text = [s for s in split_text if s != None ]
     split_text = [s for s in split_text if s != ' ' ]
 
-    print(split_text)
+
     if len(split_text) > 1:
         
         clues = split_text[::2]
-        word_lengths = split_text[1::2]
+        word_lengths_str = split_text[1::2]
         clue_lengths = split_text[1::2]
 
     else:
         clues = []
-        word_lengths = []
+        word_lengths_str = []
         clue_lengths = []
-    print('--')
-    print(f"{clues=}")
-    print('--')
-    print(f"{word_lengths=}")
-    print('--')
-    print(f"{clue_lengths=}")
+        
+    word_lengths = [list(map(int,re.findall(r'\d+',s))) for s in word_lengths_str]
+    clue_lengths = [sum(l) for l in word_lengths]
     
     return clues,word_lengths,clue_lengths,raw_text
 
@@ -396,14 +335,9 @@ def text_box_extraction_pipeline(input_image):
     cv2.fillPoly(input_image, [cross_word_contour], [255,255,255])
         
     word_loc,word_height = segment_page_preprocess(input_image)
-    # cv2.imshow("word location coarse",word_loc)
-    # cv2.waitKey()
     
     totalLabels,labels,stats,centroid = get_text_boxes(word_loc)
-    # show_box_areas(totalLabels,labels)
-    # show_box_areas_over_img(totalLabels,stats,centroid,input_image)
-    # for i in range(1,totalLabels):
-    #     get_text_box_idx(input_image,labels,i,50)
+
     
     all_clues = []
     all_word_lengths = []
@@ -422,9 +356,11 @@ def text_box_extraction_pipeline(input_image):
         
 
     for c,w,l in zip(all_clues,all_word_lengths,all_clue_lengths):
-        print(f'{c.strip()} :: {w}\n')
-            
+        print(f'{c.strip()} :: {w} :: {l}')
+        print(f'{"":-^80}')
+
     return all_clues,all_word_lengths,all_clue_lengths
+
 
 def main():
     test_image = "crossword4.jpeg"
@@ -433,9 +369,43 @@ def main():
 
     with importlib.resources.path(crossword_location, test_image) as path:
         input_image = cv2.imread(str(path))
-        
-    text_box_extraction_pipeline(input_image)
+    
+    grid = cws.grid_extract.digitse_crossword(input_image)
+    # clue_marks = cws.grid_extract.get_grid_with_clue_marks(grid)
+    across_info, down_info = cws.grid_extract.get_clue_info(grid)
+    
+    a_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
+                      for c in zip(across_info[0], across_info[1], across_info[2])]
+    d_string_info = [f' {c[0]}d. ({c[1]}) at {c[2]}'
+                      for c in zip(down_info[0], down_info[1], down_info[2])]
 
+
+    all_clues,all_word_lengths,all_clue_lengths = text_box_extraction_pipeline(input_image)
+    
+    # print(*a_string_info, sep='\n')
+    # print('\n')
+    # print(*d_string_info, sep='\n')
+    print(across_info[1])
+    print(down_info[1])
+    print(all_clue_lengths)
+    a_match_filter_result = match_template(np.array(all_clue_lengths),np.array(across_info[1]))
+    d_match_filter_result = match_template(np.array(all_clue_lengths),np.array(down_info[1]))
+    print(a_match_filter_result)
+    print(d_match_filter_result)
+    a_idx_start = np.argmin(a_match_filter_result)
+    across_clues = all_clues[a_idx_start:a_idx_start+len(across_info[1])]
+    across_clue_lengths = all_word_lengths[a_idx_start:a_idx_start+len(across_info[1])]
+    d_idx_start = np.argmin(d_match_filter_result)
+    down_clues = all_clues[d_idx_start:d_idx_start+len(down_info[1])]
+    down_clue_lengths = all_word_lengths[d_idx_start:d_idx_start+len(down_info[1])]
+
+    print(f'{"Result":_^80}')
+    print(f'{"across":_^80}')
+    for n,s,l in zip(across_info[0],across_clues,across_clue_lengths):
+        print(f"{n}a. {s.strip()} {l}")
+    print(f'{"down":_^80}')
+    for n,s,l in zip(down_info[0],down_clues,down_clue_lengths):
+        print(f"{n}d. {s.strip()} {l}")
 
 if __name__ == "__main__":
     main()
