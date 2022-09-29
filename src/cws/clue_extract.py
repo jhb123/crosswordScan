@@ -284,21 +284,10 @@ def get_text_box_idx(img,labels,idx,pad):
     
 def text_box_pre_process(img,word_height):
     
-    # gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # img = np.zeros(img.shape,dtype = np.uint8)
-
-    # img[...,0] = gs_img
-    # img[...,1] = gs_img
-    # img[...,2] = gs_img
-
-    # cv2.imshow("im",img)
-    # cv2.waitKey()
     sr = cv2.dnn_superres.DnnSuperResImpl_create()
-    # path = "EDSR_x2.pb"
     path = "ESPCN_x4.pb"
     sr.readModel(path)
-    # sr.setModel("edsr",2)
     sr.setModel("espcn",4)
     result = sr.upsample(img)
         
@@ -306,79 +295,75 @@ def text_box_pre_process(img,word_height):
     
     
     size_factor = int(word_height*4) + 1
-    # if word_height > 40:
-    img_for_reading = cv2.adaptiveThreshold(gs_img,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY,size_factor,10)
+    # # if word_height > 40:
+    img_for_reading = cv2.medianBlur(gs_img, 5)
+
+    img_for_reading = cv2.adaptiveThreshold(img_for_reading,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY,201,20)
     
-    kernel = np.ones((5,5))
-    img_for_reading = cv2.morphologyEx(img_for_reading, cv2.MORPH_CLOSE, kernel)
-          
-     
+    # kernel = np.ones((5,5))
+    # img_for_reading = cv2.morphologyEx(img_for_reading, cv2.MORPH_CLOSE, kernel)
+    # blur = cv2.GaussianBlur(img_for_reading,(9,9),1)
+        
+    cv2.imshow("text to analyse",img_for_reading)
+    cv2.waitKey()
+    
     return img_for_reading
 
 def text_box_clue_extraction(img):
     # print(pytesseract.image_to_osd(img))
     # try --psm 3
-    all_text = pytesseract.image_to_string(img,config='--psm 6')
+    all_text = pytesseract.image_to_string(img,config='--psm 3  --user-patterns my.patterns')
     raw_text = all_text
     # print(all_text)
     left_brackets = "[{\[]"
     right_brackets = "[\|}\]]"
     all_text = re.sub(left_brackets,'(',all_text)
     all_text = re.sub(right_brackets,')',all_text)
-    # all_text = all_text.replace('\n',' ')
-    # print(all_text)    
+    all_text = all_text.replace('\n',' ')
+    print(f"{'':@^30}")
+    print(all_text)    
     
-    all_text_list_split = re.split('\n', all_text)
+    # all_text_list_split = re.split('\n', all_text)
     
     # use the "?" special character to reduce this list.
-    patterns = [r'(\(\d+\))', # number in brackets
-                r'(\([\d+-]+\))', # numbers in brackets with hyphens
-                r'(\([\d+,]+\))', # numbers in brackets with commas
-                r'(\([\d+\s]+\))', # numbers in brackets with spaces
-                r'(\d+\))', # number missing left bracket
-                r'(\(\d+)', # number missing right bracket
-                ] 
+    # patterns = [r'.*\(\d+\)', # number in brackets
+    #             r'.*\([\d+-]+\)', # numbers in brackets with hyphens
+    #             r'.*\([\d+,]+\)', # numbers in brackets with commas
+    #             r'.*\([\d+\s]+\)', # numbers in brackets with spaces
+    #             r'.*\d+\)', # number missing left bracket
+    #             r'.*\(\d+', # number missing right bracket
+    #             r'.*\([g+s+S+\d+G+]\)',
+    #             r'.*\n+\d+',
+    #             r'\s.*\n+\d+'] # 5 and 6 can be mistaken for s,g and G
 
     
-    pattern = '|'.join(patterns)
-    # print(all_text_list_split)
-    left_of_clue_len = []
+    # pattern = '*\(?[\d+-,\sg+s+G+S+]*\)?'
+    pattern = r'(\(?[\d.\-,gsGS\s]*\))|(\([\d.\-,gsGS\s]*\)?)'
     
-    # print(all_text_list_split)
-    
-    for i,s in enumerate( all_text_list_split):        
-        match = re.search(pattern +r'\Z', s)
+    split_text = re.split(pattern, all_text)
+    split_text = [s for s in split_text if s != '']
+    split_text = [s for s in split_text if s != None ]
+    split_text = [s for s in split_text if s != ' ' ]
+
+    print(split_text)
+    if len(split_text) > 1:
         
-        if match != None:
-            left_of_clue_len.append(s[0:match.end()])
-        else:
-            left_of_clue_len.append(s)
-    
-    
-    # print(left_of_clue_len)
-    # just_clues = '\n'.join(left_of_clue_len)
-    
-    # print(left_of_clue_len)
-    clues = []
-    word_lengths = []
-    clue_lengths = []
+        clues = split_text[::2]
+        word_lengths = split_text[1::2]
+        clue_lengths = split_text[1::2]
 
-    tentative_clue = ''
-    for s in left_of_clue_len:
-        text = re.search(pattern +r'\Z', s)
-        if text != None:
-            tentative_clue = tentative_clue+s
-            clues.append(tentative_clue)
-            nums = re.findall(pattern, text.string)
-            nums = [int(s) for s in re.findall(r'\d+', ' '.join(nums[0]))]
-            
-            word_lengths.append(nums)
-            clue_lengths.append(sum(nums))
-            tentative_clue = ''
-        else:
-            tentative_clue = tentative_clue+s+' '
-
+    else:
+        clues = []
+        word_lengths = []
+        clue_lengths = []
+    print('--')
+    print(f"{clues=}")
+    print('--')
+    print(f"{word_lengths=}")
+    print('--')
+    print(f"{clue_lengths=}")
+    
     return clues,word_lengths,clue_lengths,raw_text
 
 
@@ -446,7 +431,7 @@ def text_box_extraction_pipeline():
     all_clue_lengths = []
     
     for i in range(1,totalLabels):
-        cropped_text_box = get_text_box_idx(input_image,labels,i,21)
+        cropped_text_box = get_text_box_idx(input_image,labels,i,1)
         cropped_text_box_pre_processed = text_box_pre_process(cropped_text_box,word_height)
 
 
@@ -456,15 +441,15 @@ def text_box_extraction_pipeline():
         all_word_lengths = all_word_lengths + word_lengths
         all_clue_lengths = all_clue_lengths + clue_lengths
         
-        # print(raw_text)
-        # print(f'{"":=^80}')
+        print(f'{"":=^80}')
         # cv2.imshow("text to analyse",cropped_text_box_pre_processed)
         # cv2.waitKey()
     
     print(f'{"":=^80}')
 
     for c,w,l in zip(all_clues,all_word_lengths,all_clue_lengths):
-        print(f'{c.strip()} :: {w}\n')
+        if c != None:
+            print(f'{c.strip()} :: {w}\n')
 
     # print(all_clue_lengths)
 
