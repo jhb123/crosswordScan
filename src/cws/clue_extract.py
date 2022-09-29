@@ -324,21 +324,6 @@ def text_box_clue_extraction(img):
     print(f"{'':@^30}")
     print(all_text)    
     
-    # all_text_list_split = re.split('\n', all_text)
-    
-    # use the "?" special character to reduce this list.
-    # patterns = [r'.*\(\d+\)', # number in brackets
-    #             r'.*\([\d+-]+\)', # numbers in brackets with hyphens
-    #             r'.*\([\d+,]+\)', # numbers in brackets with commas
-    #             r'.*\([\d+\s]+\)', # numbers in brackets with spaces
-    #             r'.*\d+\)', # number missing left bracket
-    #             r'.*\(\d+', # number missing right bracket
-    #             r'.*\([g+s+S+\d+G+]\)',
-    #             r'.*\n+\d+',
-    #             r'\s.*\n+\d+'] # 5 and 6 can be mistaken for s,g and G
-
-    
-    # pattern = '*\(?[\d+-,\sg+s+G+S+]*\)?'
     pattern = r'(\(?[\d.\-,gsGS\s]*\))|(\([\d.\-,gsGS\s]*\)?)'
     
     split_text = re.split(pattern, all_text)
@@ -404,14 +389,8 @@ def show_box_areas_over_img(totalLabels,stats,centre,img):
     cv2.imshow("text boxes",img_to_label)
     cv2.waitKey()
 
-def text_box_extraction_pipeline():
-    test_image = "crossword4.jpeg"
-    crossword_location = "cws.resources.crosswords"
-    pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/Cellar/tesseract/5.2.0/bin/tesseract'
-
-    with importlib.resources.path(crossword_location, test_image) as path:
-        input_image = cv2.imread(str(path))
-        
+def text_box_extraction_pipeline(input_image):
+            
     # remove grid
     cross_word_contour = cws.grid_extract.get_grid_contour_by_blobbing(input_image)    
     cv2.fillPoly(input_image, [cross_word_contour], [255,255,255])
@@ -441,26 +420,22 @@ def text_box_extraction_pipeline():
         all_word_lengths = all_word_lengths + word_lengths
         all_clue_lengths = all_clue_lengths + clue_lengths
         
-        print(f'{"":=^80}')
-        # cv2.imshow("text to analyse",cropped_text_box_pre_processed)
-        # cv2.waitKey()
-    
-    print(f'{"":=^80}')
 
     for c,w,l in zip(all_clues,all_word_lengths,all_clue_lengths):
-        if c != None:
-            print(f'{c.strip()} :: {w}\n')
+        print(f'{c.strip()} :: {w}\n')
+            
+    return all_clues,all_word_lengths,all_clue_lengths
 
-    # print(all_clue_lengths)
+def main():
+    test_image = "crossword4.jpeg"
+    crossword_location = "cws.resources.crosswords"
+    pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/Cellar/tesseract/5.2.0/bin/tesseract'
 
-    # for c in clues:
-    #     print(c)
+    with importlib.resources.path(crossword_location, test_image) as path:
+        input_image = cv2.imread(str(path))
+        
+    text_box_extraction_pipeline(input_image)
 
-    # cv2.imshow("tinput",input_image)
-    # cv2.waitKey()
 
 if __name__ == "__main__":
-    text_box_extraction_pipeline()
-    # test_segment_page()
-    # clue_classifier()
-    # main()
+    main()
