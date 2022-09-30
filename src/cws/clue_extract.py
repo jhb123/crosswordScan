@@ -490,7 +490,22 @@ def match_clues_to_grid(a_clue_length, d_clue_length, all_clues,
     down_clue_lengths = all_word_lengths[d_idx_start:d_idx_start +
                                          len(d_clue_length)]
 
+
+    across_clue_lengths = choose_grid_or_ocr_length(a_clue_length,across_clue_lengths)
+    down_clue_lengths = choose_grid_or_ocr_length(d_clue_length,down_clue_lengths)
+
+
     return (across_clues, across_clue_lengths), (down_clues, down_clue_lengths)
+
+def choose_grid_or_ocr_length(grid_legnth,ocr_length):
+    clue_length = []
+    for grid_len, ocr_len in zip(grid_legnth,ocr_length):
+        if len(ocr_len) > 1:
+            clue_length.append(ocr_len)
+        else:
+            clue_length.append([grid_len])
+
+    return clue_length
 
 
 # def main():
