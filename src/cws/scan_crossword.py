@@ -5,7 +5,7 @@ Created on Fri Sep 30 09:25:42 2022
 
 @author: josephbriggs
 """
-import importlib
+import importlib.resources
 import pytesseract
 import cv2
 import matplotlib.pyplot as plt
