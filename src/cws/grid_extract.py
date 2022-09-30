@@ -5,12 +5,8 @@ Created on Tue Aug  2 20:03:24 2022
 
 @author: josephbriggs
 """
-import importlib.resources
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy import stats as st
-import cws.utils as utils
 
 
 def find_crossword_contour(img):
@@ -449,74 +445,90 @@ def get_clue_info(grid):
 
 
 def get_grid_contour_by_blobbing(img):
+    '''
+    uses connected component analysis to find the crossword.
+
+    Parameters
+    ----------
+    img : np.array
+        3 channel image containing a crossword.
+
+    Returns
+    -------
+    TYPE
+        contour that encloses the crossword.
+
+    '''
+
+    #pre-process
     gs_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    thresh = cv2.adaptiveThreshold(gs_img,255,cv2.ADAPTIVE_THRESH_MEAN_C,
-                cv2.THRESH_BINARY_INV,51,30)
-    
-    dilate = cv2.dilate(thresh,np.ones((7,7)),1)
-    
-    max_area = gs_img.size/(6**2)
-    
-    totalLabels, label_ids, values, centroid = cv2.connectedComponentsWithStats(dilate, 8)
-    areas = values[:,4]
-    area_thresh = max_area
-    idxs = np.argwhere(areas>area_thresh)
-    
+    thresh = cv2.adaptiveThreshold(gs_img, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                                   cv2.THRESH_BINARY_INV, 51, 30)
 
-    big_features = values[idxs,:]
-    widths = np.squeeze(big_features)[:,2]
-    heights = np.squeeze(big_features)[:,3]
-    
+    dilate = cv2.dilate(thresh, np.ones((7, 7)), 1)
+
+
+    _, label_ids, values, _ = cv2.connectedComponentsWithStats(dilate, 8)
+
+    areas = values[:, 4]
+
+    # assumes that the crossword takes up 1/6 of the page.
+    area_thresh = gs_img.size/(6**2)
+    idxs = np.argwhere(areas > area_thresh)
+
+    big_features = values[idxs, :]
+    widths = np.squeeze(big_features)[:, 2]
+    heights = np.squeeze(big_features)[:, 3]
+
     aspects = widths/heights
-    
+
+    # assume that the crossword is the squarest big blob.
     squareness = np.abs(aspects - 1)
-    
-    i = np.argmin(squareness)
-    
-    
-    row_info = np.squeeze(big_features[i,:])
+    squarest_blob_i = np.argmin(squareness)
 
-    row = np.argwhere(values[:,:] == row_info)
+    # use the info from big_features to search the original blob results.
+    row_info = np.squeeze(big_features[squarest_blob_i, :])
+    row = np.argwhere(values[:, :] == row_info)
     cw_label = row[0][0]
-    
-    cw = label_ids == cw_label
-    cw = 255*cw.astype(np.uint8)
-    
-    contours, hierarchy = cv2.findContours(cw, 
-                                            cv2.RETR_EXTERNAL,
-                                            cv2.CHAIN_APPROX_SIMPLE)
-    
+
+    crossword_blob = label_ids == cw_label
+    crossword_blob = 255*crossword_blob.astype(np.uint8)
+
+    contours, _ = cv2.findContours(crossword_blob,
+                                   cv2.RETR_EXTERNAL,
+                                   cv2.CHAIN_APPROX_SIMPLE)
+
     return contours[0]
-    
-
-def main():
-    '''
-    example of functions in grid extract
-    '''
-
-    test_image = "crossword4.jpeg"
-    crossword_location = "cws.resources.crosswords"
-
-    with importlib.resources.path(crossword_location, test_image) as path:
-        input_image = cv2.imread(str(path))
-
-    grid = digitse_crossword(input_image)
-    clue_marks = get_grid_with_clue_marks(grid)
-    across_info, down_info = get_clue_info(grid)
-
-    a_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
-                      for c in zip(across_info[0], across_info[1], across_info[2])]
-    d_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
-                      for c in zip(down_info[0], down_info[1], down_info[2])]
-
-    print(*a_string_info, sep='\n')
-    print('\n')
-    print(*d_string_info, sep='\n')
-
-    _, ax = plt.subplots()
-    ax.imshow(clue_marks)
 
 
-if __name__ == "__main__":
-    main()
+# def main():
+#     '''
+#     example of functions in grid extract
+#     '''
+
+#     test_image = "crossword4.jpeg"
+#     crossword_location = "cws.resources.crosswords"
+
+#     with importlib.resources.path(crossword_location, test_image) as path:
+#         input_image = cv2.imread(str(path))
+
+#     grid = digitse_crossword(input_image)
+#     clue_marks = get_grid_with_clue_marks(grid)
+#     across_info, down_info = get_clue_info(grid)
+
+#     a_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
+#                      for c in zip(across_info[0], across_info[1], across_info[2])]
+#     d_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
+#                      for c in zip(down_info[0], down_info[1], down_info[2])]
+
+#     print(*a_string_info, sep='\n')
+#     print('\n')
+#     print(*d_string_info, sep='\n')
+
+#     _, ax = plt.subplots()
+#     ax.imshow(clue_marks)
+
+
+# if __name__ == "__main__":
+#     main()
