@@ -242,7 +242,7 @@ def text_box_pre_process(img,word_height):
     img_for_reading = cv2.medianBlur(gs_img, 5)
 
     img_for_reading = cv2.adaptiveThreshold(img_for_reading,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                cv2.THRESH_BINARY,201,20)
+                cv2.THRESH_BINARY,201,30)
     
     # kernel = np.ones((5,5))
     # img_for_reading = cv2.morphologyEx(img_for_reading, cv2.MORPH_CLOSE, kernel)
@@ -256,24 +256,25 @@ def text_box_pre_process(img,word_height):
 def text_box_clue_extraction(img):
     # print(pytesseract.image_to_osd(img))
     # try --psm 3
-    all_text = pytesseract.image_to_string(img,config='--psm 3  --user-patterns my.patterns')
+    all_text = pytesseract.image_to_string(img,config='--psm 3')
     raw_text = all_text
-    # print(all_text)
     left_brackets = "[{\[]"
     right_brackets = "[\|}\]]"
     all_text = re.sub(left_brackets,'(',all_text)
     all_text = re.sub(right_brackets,')',all_text)
-    all_text = all_text.replace('\n',' ')
+    # all_text = all_text.replace('\n',' ')
  
     
-    pattern = r'(\(?[\d.\-,gsGS\s]*\))|(\([\d.\-,gsGS\s]*\)?)'
+    pattern = r'(\(?[\d.\-,gsGS\s]*\))|(\([\d.\-,gsGS\s]*\)?)|(\d+\n)|\s[GSsg]\n'
     
     split_text = re.split(pattern, all_text)
+    # print(split_text)
+    split_text = [s.replace('\n',' ') for s in split_text if s!= None]
     split_text = [s for s in split_text if s != '']
     split_text = [s for s in split_text if s != None ]
     split_text = [s for s in split_text if s != ' ' ]
-
-
+    
+    
     if len(split_text) > 1:
         
         clues = split_text[::2]
@@ -284,7 +285,8 @@ def text_box_clue_extraction(img):
         clues = []
         word_lengths_str = []
         clue_lengths = []
-        
+    # print(split_text)
+    # print(word_lengths_str)
     word_lengths = [list(map(int,re.findall(r'\d+',s))) for s in word_lengths_str]
     clue_lengths = [sum(l) for l in word_lengths]
     
@@ -354,13 +356,22 @@ def text_box_extraction_pipeline(input_image):
         all_word_lengths = all_word_lengths + word_lengths
         all_clue_lengths = all_clue_lengths + clue_lengths
         
-
-    for c,w,l in zip(all_clues,all_word_lengths,all_clue_lengths):
-        print(f'{c.strip()} :: {w} :: {l}')
-        print(f'{"":-^80}')
-
     return all_clues,all_word_lengths,all_clue_lengths
 
+def match_clues_to_grid(a_clue_length,d_clue_length,all_clues,all_word_lengths, all_clue_lengths):
+
+    a_match_filter_result = match_template(np.array(all_clue_lengths),np.array(a_clue_length))
+    d_match_filter_result = match_template(np.array(all_clue_lengths),np.array(d_clue_length))
+
+    a_idx_start = np.argmin(a_match_filter_result)
+    across_clues = all_clues[a_idx_start:a_idx_start+len(a_clue_length)]
+    across_clue_lengths = all_word_lengths[a_idx_start:a_idx_start+len(a_clue_length)]
+    
+    d_idx_start = np.argmin(d_match_filter_result)
+    down_clues = all_clues[d_idx_start:d_idx_start+len(d_clue_length)]
+    down_clue_lengths = all_word_lengths[d_idx_start:d_idx_start+len(d_clue_length)]
+
+    return (across_clues,across_clue_lengths),(down_clues,down_clue_lengths)
 
 def main():
     test_image = "crossword4.jpeg"
@@ -369,43 +380,32 @@ def main():
 
     with importlib.resources.path(crossword_location, test_image) as path:
         input_image = cv2.imread(str(path))
-    
+    input_image_copy = input_image.copy()
     grid = cws.grid_extract.digitse_crossword(input_image)
     # clue_marks = cws.grid_extract.get_grid_with_clue_marks(grid)
+    
     across_info, down_info = cws.grid_extract.get_clue_info(grid)
     
-    a_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
-                      for c in zip(across_info[0], across_info[1], across_info[2])]
-    d_string_info = [f' {c[0]}d. ({c[1]}) at {c[2]}'
-                      for c in zip(down_info[0], down_info[1], down_info[2])]
-
 
     all_clues,all_word_lengths,all_clue_lengths = text_box_extraction_pipeline(input_image)
     
-    # print(*a_string_info, sep='\n')
-    # print('\n')
-    # print(*d_string_info, sep='\n')
-    print(across_info[1])
-    print(down_info[1])
-    print(all_clue_lengths)
-    a_match_filter_result = match_template(np.array(all_clue_lengths),np.array(across_info[1]))
-    d_match_filter_result = match_template(np.array(all_clue_lengths),np.array(down_info[1]))
-    print(a_match_filter_result)
-    print(d_match_filter_result)
-    a_idx_start = np.argmin(a_match_filter_result)
-    across_clues = all_clues[a_idx_start:a_idx_start+len(across_info[1])]
-    across_clue_lengths = all_word_lengths[a_idx_start:a_idx_start+len(across_info[1])]
-    d_idx_start = np.argmin(d_match_filter_result)
-    down_clues = all_clues[d_idx_start:d_idx_start+len(down_info[1])]
-    down_clue_lengths = all_word_lengths[d_idx_start:d_idx_start+len(down_info[1])]
+    acrosses,downs = match_clues_to_grid(across_info[1],down_info[1],
+                                        all_clues,all_word_lengths, all_clue_lengths)
+    
+   
+    fig,ax = plt.subplots()
+    ax.imshow(grid)
 
-    print(f'{"Result":_^80}')
-    print(f'{"across":_^80}')
-    for n,s,l in zip(across_info[0],across_clues,across_clue_lengths):
+    print(f'{"  Result  ":#^80}')
+    print(f'{"ACROSS":_^80}')
+    for n,s,l in zip(across_info[0],*acrosses):
         print(f"{n}a. {s.strip()} {l}")
-    print(f'{"down":_^80}')
-    for n,s,l in zip(down_info[0],down_clues,down_clue_lengths):
+    print(f'{"DOWN":_^80}')
+    for n,s,l in zip(down_info[0],*downs):
         print(f"{n}d. {s.strip()} {l}")
+        
+    cv2.imshow("Input photo",input_image_copy)
+    cv2.waitKey()
 
 if __name__ == "__main__":
     main()
