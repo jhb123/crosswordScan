@@ -5,6 +5,7 @@ Created on Wed Sep 21 18:05:52 2022
 
 @author: josephbriggs
 """
+import importlib
 import random as rng
 import string
 import re
@@ -234,8 +235,12 @@ def text_box_pre_process(img):
     '''
 
     super_resolution = cv2.dnn_superres.DnnSuperResImpl_create()
-    path = "ESPCN_x4.pb"
-    super_resolution.readModel(path)
+
+    model_file = "ESPCN_x4.pb"
+    model_location = "cws.resources.neural_net_models"
+    with importlib.resources.path(model_location, model_file) as path:
+        super_resolution.readModel(str(path))
+
     super_resolution.setModel("espcn", 4)
     result = super_resolution.upsample(img)
 
