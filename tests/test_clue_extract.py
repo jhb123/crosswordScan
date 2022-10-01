@@ -39,7 +39,7 @@ def test_clue_length_parsing_on_photo_input():
     expected_across_length = [[6], [8], [9], [5], [4, 7], [3], [7],
                               [2, 1, 3], [6], [7], [3], [11], [5], [9], [8], [6]]
 
-    expected_down_length = [[8], [5], [3], [7], [5, 6], [4, 5], [6], [6], 
+    expected_down_length = [[8], [5], [3], [7], [5, 6], [4, 5], [6], [6],
                             [4, 7], [9], [8], [7], [6], [4, 2], [5], [3]]
 
     assert(across_word_length == expected_across_length)
