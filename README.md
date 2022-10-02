@@ -4,7 +4,7 @@ crosswordScan is a python tool for extracting a crossword from an image. This is
 
 ## Pipeline
 
-![pipeline](/repository/crosswrod_extration.svg?raw=true "Alpha Pipeline")
+![pipeline](https://github.com/jhb123/crosswordScan/blob/main/crossword_extraction.svg)
 
 ## Core Functionality
 
