@@ -25,5 +25,18 @@ Pull this repo, cd into the directory containing the scr directory and run:
 ```pip install .```
 Try this out in a virtual python environment! import it with `import cws`
 
-Once the project is slightly more mature, this will be put on the python package index.
+## Development
 
+Option 1. Create an environment with docker
+```
+docker build . --tag experimental_cw_scan
+docker run -it experimental_cw_scan /bin/bash
+```
+Option 2. 
+Install OpenCV and Tesseract yourself.
+
+Try out some of the demos functions
+```python
+from cws import grid_extract
+grid_extract.main()
+```
