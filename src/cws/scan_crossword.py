@@ -6,6 +6,7 @@ Created on Fri Sep 30 09:25:42 2022
 @author: josephbriggs
 """
 import importlib.resources
+import os
 import pytesseract
 import cv2
 import matplotlib.pyplot as plt
@@ -30,7 +31,7 @@ def main():
 
     test_image = "crossword4.jpeg"
     crossword_location = "cws.resources.crosswords"
-    pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/Cellar/tesseract/5.2.0/bin/tesseract'
+    pytesseract.pytesseract.tesseract_cmd = os.environ["TESSERACT_PATH"]
 
     with importlib.resources.path(crossword_location, test_image) as path:
         input_image = cv2.imread(str(path))

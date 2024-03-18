@@ -5,7 +5,9 @@ Created on Tue Aug  2 20:03:24 2022
 
 @author: josephbriggs
 """
+from importlib import resources
 import cv2
+from matplotlib import pyplot as plt
 import numpy as np
 
 
@@ -502,33 +504,33 @@ def get_grid_contour_by_blobbing(img):
     return contours[0]
 
 
-# def main():
-#     '''
-#     example of functions in grid extract
-#     '''
+def main():
+    '''
+    example of functions in grid extract
+    '''
 
-#     test_image = "crossword4.jpeg"
-#     crossword_location = "cws.resources.crosswords"
+    test_image = "crossword4.jpeg"
+    crossword_location = "cws.resources.crosswords"
 
-#     with importlib.resources.path(crossword_location, test_image) as path:
-#         input_image = cv2.imread(str(path))
+    with resources.path(crossword_location, test_image) as path:
+        input_image = cv2.imread(str(path))
 
-#     grid = digitse_crossword(input_image)
-#     clue_marks = get_grid_with_clue_marks(grid)
-#     across_info, down_info = get_clue_info(grid)
+    grid = digitse_crossword(input_image)
+    clue_marks = get_grid_with_clue_marks(grid)
+    across_info, down_info = get_clue_info(grid)
 
-#     a_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
-#                      for c in zip(across_info[0], across_info[1], across_info[2])]
-#     d_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
-#                      for c in zip(down_info[0], down_info[1], down_info[2])]
+    a_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
+                     for c in zip(across_info[0], across_info[1], across_info[2])]
+    d_string_info = [f' {c[0]}a. ({c[1]}) at {c[2]}'
+                     for c in zip(down_info[0], down_info[1], down_info[2])]
 
-#     print(*a_string_info, sep='\n')
-#     print('\n')
-#     print(*d_string_info, sep='\n')
+    print(*a_string_info, sep='\n')
+    print('\n')
+    print(*d_string_info, sep='\n')
 
-#     _, ax = plt.subplots()
-#     ax.imshow(clue_marks)
+    _, ax = plt.subplots()
+    ax.imshow(clue_marks)
+    plt.show()
 
-
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()

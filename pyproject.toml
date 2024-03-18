@@ -21,9 +21,10 @@ classifiers = [
 
 dependencies = [
 	"matplotlib==3.5.2",
-	"numpy==1.21.5",
+	"numpy>=1.21.5",
 	"opencv-contrib-python ==4.6.0.66",
-	"pytesseract==0.3.10"
+	"pytesseract==0.3.10",
+  "pytest==8.0.2",
 ]
 
 [project.urls]

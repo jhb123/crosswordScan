@@ -1,0 +1,7 @@
+.github
+.venv
+.pytest_cache
+.dist
+.pylintrc
+crossword_extraction.svg
+.env
