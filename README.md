@@ -3,7 +3,7 @@
 
 crosswordScan is a python tool for extracting a crossword from an image. This is a very early version of the tool and not all of the core functionality is implemented yet. 
 
-Brought to you by the Crossword Scan Gang
+Brought to you by the Crossword Scan Team.
 
 ## Pipeline
 
