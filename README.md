@@ -40,3 +40,7 @@ Try out some of the demos functions
 from cws import grid_extract
 grid_extract.main()
 ```
+
+## API
+
+The api package contains a standalone application built with FastAPI and the crossword scan library. Install 

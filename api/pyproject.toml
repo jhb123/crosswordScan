@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cws_api"
+version = "0.0.1"
+requires-python = ">=3.9"
+
+
+dependencies = [
+	"cws>=0.0.1",
+    "fastapi==0.110.0",
+    "uvicorn==0.28.1"
+]
+
+[project.entry-points."cws_api.app"]
+app =  "cws_api:app"
