@@ -6,13 +6,9 @@ This API is for digitising crosswords.
 
 Install with
 ```
-pip install -e .
+pip install -r requirements.txt
 ```
-You can run it with
+From the api directory, you can start the server with
 ```
-python api/src/cws_api/app.py 
-```
-or with
-```
-python -m cws_api.app 
+uvicorn app:app --reload  
 ```

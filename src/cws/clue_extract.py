@@ -10,6 +10,7 @@ import random as rng
 import string
 import re
 import cv2
+from matplotlib import pyplot as plt
 import numpy as np
 import pytesseract
 import cws.grid_extract
@@ -511,7 +512,7 @@ def choose_grid_or_ocr_length(grid_legnth,ocr_length):
 def main():
     test_image = "crossword4.jpeg"
     crossword_location = "cws.resources.crosswords"
-    pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/Cellar/tesseract/5.2.0/bin/tesseract'
+    pytesseract.pytesseract.tesseract_cmd = r'/opt/homebrew/bin/tesseract'
 
     with importlib.resources.path(crossword_location, test_image) as path:
         input_image = cv2.imread(str(path))
