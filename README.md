@@ -43,3 +43,7 @@ Try out some of the demos functions
 from cws import grid_extract
 grid_extract.main()
 ```
+
+## API
+
+See the Readme in the api directory for information about using the API.
