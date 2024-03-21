@@ -43,4 +43,4 @@ grid_extract.main()
 
 ## API
 
-The api package contains a standalone application built with FastAPI and the crossword scan library. Install 
+See the Readme in the api directory for information about using the API.
