@@ -45,5 +45,7 @@ grid_extract.main()
 ```
 
 ## API
-
-See the Readme in the api directory for information about using the API.
+Begin the test webpage with:
+```
+uvicorn cws.api.app:app --reload
+```

@@ -1,22 +1,21 @@
 import base64
-from importlib import resources
 import logging
 import tempfile
-from typing import Annotated
 
 import cv2
-from fastapi.responses import FileResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from cws import grid_extract
-
-from fastapi import FastAPI, File, Form, Request, UploadFile
+from fastapi import FastAPI, File, Request, UploadFile
 import uvicorn
+
+from cws import grid_extract
+from cws.api import templates
 
 logger = logging.getLogger("uvicorn")
 
 app = FastAPI()
 
-templates = Jinja2Templates(directory="templates")
+
+templates = Jinja2Templates(directory=templates.__path__)
 
 @app.get("/")
 async def root(request: Request):
