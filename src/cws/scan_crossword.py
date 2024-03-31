@@ -12,6 +12,7 @@ import cv2
 import matplotlib.pyplot as plt
 import cws.grid_extract
 import cws.clue_extract
+from dotenv import load_dotenv
 
 def main():
     '''
@@ -31,6 +32,9 @@ def main():
 
     test_image = "crossword4.jpeg"
     crossword_location = "cws.resources.crosswords"
+
+    load_dotenv()
+
     pytesseract.pytesseract.tesseract_cmd = os.environ["TESSERACT_PATH"]
 
     with importlib.resources.path(crossword_location, test_image) as path:
