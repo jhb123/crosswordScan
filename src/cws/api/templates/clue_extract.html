@@ -1,0 +1,16 @@
+<div class="row justify-content-center mb-8">
+    <div class="col-md-8">
+        <h1 class="mb-4">Extract Clues</h1>
+        <form hx-post="/clue" hx-target="#response" enctype="multipart/form-data">
+            <div class="input-group mb-3">
+                <input type="file" class="form-control" id="image" name="image" accept="image/*">
+                <label class="input-group-text" for="image">Upload</label>
+            </div>
+            <input type="submit">
+        </form>
+    </div>
+</div>
+<div class="row justify-content-center">
+    <div class="col-6" id="response">
+    </div>
+</div>

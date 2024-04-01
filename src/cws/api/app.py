@@ -1,14 +1,16 @@
 import base64
 import logging
-import tempfile
+from pathlib import Path
 
-import cv2
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi import FastAPI, File, Request, UploadFile
 import uvicorn
 
-from cws import grid_extract
 from cws.api import templates
+from cws.api.clue import router as clue_router
+from cws.api.grid import router as grid_router
+from cws import api
 
 logger = logging.getLogger("uvicorn")
 
@@ -17,45 +19,20 @@ app = FastAPI()
 
 templates = Jinja2Templates(directory=templates.__path__)
 
+
 @app.get("/")
 async def root(request: Request):
     return templates.TemplateResponse(
         request=request, name="index.html", context={}
     )
     
-    
-@app.post("/")
-async def upload(request: Request, image: UploadFile = File(...)):
-    image = await image.read()
-    # Create a temporary file
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        # Write the contents of the image into the temporary file
-        temp_file.write(image)
-        temp_file.flush()
-    
-        input_image = cv2.imread(temp_file.name)
-    
-    
-    grid = grid_extract.digitse_crossword(input_image)
-    clue_marks = grid_extract.get_grid_with_clue_marks(grid)
-    logger.info(f"\n{grid}")
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
-        resized_array = cv2.resize(clue_marks*100, (201, 201), interpolation=cv2.INTER_NEAREST)
+app.include_router(clue_router)
+app.include_router(grid_router)
 
-        cv2.imwrite(temp_file.name, resized_array)
+api_dir = Path(__file__).parent
 
-        img_data = temp_file.read()
+app.mount("/static", StaticFiles(directory=api_dir / "static"), name="static")
 
-        img_base64 = base64.b64encode(img_data).decode("utf-8")
-
-        # Construct the Data URI
-        data_uri = f"data:image/png;base64,{img_base64}"
-
-        return templates.TemplateResponse(
-            request=request, name="embedded_image.html", context={"data_uri": data_uri}
-        )
-
-    
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
