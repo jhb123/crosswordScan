@@ -14,6 +14,34 @@ import cws.grid_extract
 import cws.clue_extract
 from dotenv import load_dotenv
 
+def process_crossword(crossword_location, test_image):
+    load_dotenv()
+    pytesseract.pytesseract.tesseract_cmd = os.environ["TESSERACT_PATH"]
+    with importlib.resources.path(crossword_location, test_image) as path:
+        input_image = cv2.imread(str(path))
+    input_image_copy = input_image.copy()
+    grid = cws.grid_extract.digitse_crossword(input_image)
+    # clue_marks = cws.grid_extract.get_grid_with_clue_marks(grid)
+    across_info, down_info = cws.grid_extract.get_clue_info(grid)
+    all_clues, all_word_lengths, all_clue_lengths = cws.clue_extract.text_box_extraction_pipeline(
+        input_image)
+    acrosses, downs = cws.clue_extract.match_clues_to_grid(across_info[1],
+                                                           down_info[1],
+                                                           all_clues,
+                                                           all_word_lengths,
+                                                           all_clue_lengths)
+    _, ax = plt.subplots()
+    ax.imshow(grid)
+    print(f'{"  Result  ":#^80}')
+    print(f'{"ACROSS":_^80}')
+    for clue_num, clue, word_lengths in zip(across_info[0], *acrosses):
+        print(f"{clue_num}a. {clue.strip()} {word_lengths}")
+    print(f'{"DOWN":_^80}')
+    for clue_num, clue, word_lengths in zip(down_info[0], *downs):
+        print(f"{clue_num}d. {clue.strip()} {word_lengths}")
+    cv2.imshow("Input photo", input_image_copy)
+    cv2.waitKey()
+
 def main():
     '''
     Converts an image of a crossword with clues into a digitised version
@@ -33,41 +61,7 @@ def main():
     test_image = "crossword4.jpeg"
     crossword_location = "cws.resources.crosswords"
 
-    load_dotenv()
-
-    pytesseract.pytesseract.tesseract_cmd = os.environ["TESSERACT_PATH"]
-
-    with importlib.resources.path(crossword_location, test_image) as path:
-        input_image = cv2.imread(str(path))
-    input_image_copy = input_image.copy()
-    grid = cws.grid_extract.digitse_crossword(input_image)
-    # clue_marks = cws.grid_extract.get_grid_with_clue_marks(grid)
-
-    across_info, down_info = cws.grid_extract.get_clue_info(grid)
-
-    all_clues, all_word_lengths, all_clue_lengths = cws.clue_extract.text_box_extraction_pipeline(
-        input_image)
-
-    acrosses, downs = cws.clue_extract.match_clues_to_grid(across_info[1],
-                                                           down_info[1],
-                                                           all_clues,
-                                                           all_word_lengths,
-                                                           all_clue_lengths)
-
-    _, ax = plt.subplots()
-    ax.imshow(grid)
-
-    print(f'{"  Result  ":#^80}')
-    print(f'{"ACROSS":_^80}')
-    for clue_num, clue, word_lengths in zip(across_info[0], *acrosses):
-        print(f"{clue_num}a. {clue.strip()} {word_lengths}")
-    print(f'{"DOWN":_^80}')
-    for clue_num, clue, word_lengths in zip(down_info[0], *downs):
-        print(f"{clue_num}d. {clue.strip()} {word_lengths}")
-
-    cv2.imshow("Input photo", input_image_copy)
-    cv2.waitKey()
-
+    process_crossword(crossword_location, test_image)
 
 if __name__ == "__main__":
     main()
