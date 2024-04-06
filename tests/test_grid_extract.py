@@ -37,7 +37,7 @@ def test_grid_digitisation_with_photo():
                           [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
                           [1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1]])
 
-    grid = cws.grid_extract.digitse_crossword(input_image)
+    grid = cws.grid_extract.digitise_crossword(input_image)
     assert(np.array_equal(grid, test_grid))
 
 

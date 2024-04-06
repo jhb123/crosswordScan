@@ -188,7 +188,7 @@ def get_box_size(img):
     return np.median(side_length)
 
 
-def digitse_crossword(img):
+def digitise_crossword(img):
     '''
     convert an image of a crossword into a numpy array.
 
@@ -203,7 +203,7 @@ def digitse_crossword(img):
 
     Each cell in the returned numpy array corresponds to a square in the
     crossword. If the cell == 1 then that is a space for a letter. If the
-    cell == 0 then that is a flled in space.
+    cell == 0 then that is a filled-in space.
     '''
 
     # cw_contour = find_crossword_contour(img)
@@ -515,7 +515,7 @@ def main():
     with resources.path(crossword_location, test_image) as path:
         input_image = cv2.imread(str(path))
 
-    grid = digitse_crossword(input_image)
+    grid = digitise_crossword(input_image)
     clue_marks = get_grid_with_clue_marks(grid)
     across_info, down_info = get_clue_info(grid)
 

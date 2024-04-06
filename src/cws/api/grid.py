@@ -35,7 +35,7 @@ async def upload(request: Request, image: UploadFile = File(...)):
         input_image = cv2.imread(temp_file.name)
     
     
-    grid = grid_extract.digitse_crossword(input_image)
+    grid = grid_extract.digitise_crossword(input_image)
     clue_marks = grid_extract.get_grid_with_clue_marks(grid)
     logger.info(f"\n{grid}")
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:

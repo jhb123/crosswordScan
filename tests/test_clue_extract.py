@@ -19,7 +19,7 @@ def test_clue_length_parsing_on_photo_input():
 
     with importlib.resources.path(crossword_location, test_image) as path:
         input_image = cv2.imread(str(path))
-    grid = cws.grid_extract.digitse_crossword(input_image)
+    grid = cws.grid_extract.digitise_crossword(input_image)
     # clue_marks = cws.grid_extract.get_grid_with_clue_marks(grid)
 
     across_info, down_info = cws.grid_extract.get_clue_info(grid)
